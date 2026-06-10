@@ -33,7 +33,8 @@ protected:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="Item|Effect")
 	USoundBase* PickSound;
 
-	
+	FTimerHandle DestroyParticleHandle;
+
 	virtual void OnItemOverlap(
 		UPrimitiveComponent* OverlappedComp,
 		AActor* OtherActor,

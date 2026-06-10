@@ -17,13 +17,11 @@ ASpawnValume::ASpawnValume()
 
 	SpawningBox = CreateDefaultSubobject<UBoxComponent>("SpawningBox");
 	SpawningBox->SetupAttachment(Root);
-
-	ItemDataTable = nullptr;
 }
 
-AActor* ASpawnValume::SpawnRandomItem()
+AActor* ASpawnValume::SpawnRandomItem(UDataTable* ItemDataTable)
 {
-	if(FItemSpawnRow* SelectedRow = GetRandomItem())
+	if(FItemSpawnRow* SelectedRow = GetRandomItem(ItemDataTable))
 	{
 		if(UClass* ActualClass = SelectedRow->ItemClass.Get())
 		{
@@ -33,7 +31,7 @@ AActor* ASpawnValume::SpawnRandomItem()
 	return nullptr;
 }
 
-FItemSpawnRow* ASpawnValume::GetRandomItem()
+FItemSpawnRow* ASpawnValume::GetRandomItem(UDataTable* ItemDataTable)
 {
 	if(!ItemDataTable) return nullptr;
 

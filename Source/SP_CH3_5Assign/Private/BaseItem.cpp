@@ -53,38 +53,40 @@ void ABaseItem::OnItemEndOverlap(
 void ABaseItem::ActivateItem(AActor* OverlapActor)
 {
 	UParticleSystemComponent* Particle = nullptr;
-	if(PickParticle)
+	if (PickParticle)
 	{
 		Particle = UGameplayStatics::SpawnEmitterAtLocation(
 			GetWorld(),
 			PickParticle,
 			GetActorLocation(),
 			GetActorRotation(),
-			true
-			);
+			false
+		);
 	}
-	if(PickSound)
+	if (PickSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(
 			GetWorld(),
 			PickSound,
 			GetActorLocation()
-			);
+		);
 	}
 
-	
-	if(Particle)
+	if (Particle && GetWorld())
 	{
-		FTimerHandle DestroyParticleHandle;
+		TWeakObjectPtr<UParticleSystemComponent> WeakParticle = Particle;
 		GetWorld()->GetTimerManager().SetTimer(
 			DestroyParticleHandle,
-			[Particle]()
+			[WeakParticle]()
 			{
-				Particle->DestroyComponent();	
+				if (WeakParticle.IsValid())
+				{
+					WeakParticle->DestroyComponent();
+				}
 			},
 			5.0f,
 			false
-			);
+		);
 	}
 }
 

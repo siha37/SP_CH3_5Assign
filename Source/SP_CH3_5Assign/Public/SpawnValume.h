@@ -19,13 +19,11 @@ public:
 	USceneComponent* Root;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
 	UBoxComponent* SpawningBox;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawning")
-	UDataTable* ItemDataTable;
 
 	UFUNCTION(BlueprintCallable, Category = "Spawning")
-	AActor* SpawnRandomItem();
+	AActor* SpawnRandomItem(UDataTable* ItemDataTable);
 	
-	FItemSpawnRow* GetRandomItem();
+	FItemSpawnRow* GetRandomItem(UDataTable* ItemDataTable);
 	FVector GetRandomPointInVolume() const;
 	AActor* SpawnItem(TSubclassOf<AActor> ItemClass);
 };

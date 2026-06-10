@@ -33,7 +33,8 @@ public:
 	bool bHasExploded = false;
 
 	FTimerHandle TimerHandle;
-	
+
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void ActivateItem(AActor* OverlapActor) override;
 
 	void Explode();

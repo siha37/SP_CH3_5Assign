@@ -21,6 +21,14 @@ AMineItem::AMineItem()
 	ExplosionCollision->SetupAttachment(Scene);
 }
 
+void AMineItem::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(TimerHandle);
+	}
+	Super::EndPlay(EndPlayReason);
+}
 
 void AMineItem::ActivateItem(AActor* OverlapActor)
 {
@@ -74,19 +82,22 @@ void AMineItem::Explode()
 		}
 	}
 	
-	DestroyItem();
-
-	if(Particle)
+	if (Particle && GetWorld())
 	{
-		FTimerHandle DestroyParticleHandle;
+		TWeakObjectPtr<UParticleSystemComponent> WeakParticle = Particle;
 		GetWorld()->GetTimerManager().SetTimer(
 			DestroyParticleHandle,
-			[Particle]()
+			[WeakParticle]()
 			{
-				Particle->DestroyComponent();	
+				if (WeakParticle.IsValid())
+				{
+					WeakParticle->DestroyComponent();
+				}
 			},
 			1.0f,
 			false
-			);
+		);
 	}
+
+	DestroyItem();
 }
