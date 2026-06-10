@@ -2,6 +2,8 @@
 
 
 #include "CoinItem.h"
+#include "PlayerGameState.h"
+
 
 ACoinItem::ACoinItem()
 {
@@ -11,9 +13,17 @@ ACoinItem::ACoinItem()
 
 void ACoinItem::ActivateItem(AActor* OverlapActor)
 {
+	Super::ActivateItem(OverlapActor);
 	if(OverlapActor && OverlapActor->ActorHasTag("Player"))
 	{
-		GEngine->AddOnScreenDebugMessage(-1,2.f,FColor::Red,"Player Hit!");
+		if(UWorld* World = GetWorld())
+		{
+			if(APlayerGameState* state = World->GetGameState<APlayerGameState>())
+			{
+				state->AddScore(PointValue);
+				state->OnCoinCollected();
+			}
+		}
 		DestroyItem();
 	}
 }

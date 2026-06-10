@@ -28,6 +28,25 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
 	UInputAction* RollAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="UI")
+	TSubclassOf<UUserWidget> HUDWidgetClass;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="UI")
+	UUserWidget* HUDWidgetInstance;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="UI")
+	TSubclassOf<UUserWidget> MainMenuWidgetClass;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="UI")
+	UUserWidget* MainMenuWidgetInstance;
 
 	virtual void BeginPlay() override;
+	
+	UFUNCTION(BlueprintCallable, Category="UI")
+	UUserWidget* GetHUDWidget() const;
+
+	UFUNCTION(BlueprintCallable, Category="UI")
+	void ShowGameHUD();
+	UFUNCTION(BlueprintCallable, Category="UI")
+	void ShowMainMenu(bool bIsRestart);
+	UFUNCTION(BlueprintCallable, Category="UI")
+	void StartGame();
 };

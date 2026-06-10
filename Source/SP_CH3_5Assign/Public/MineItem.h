@@ -25,6 +25,13 @@ public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="Item")
 	int ExplosionDamage;
 
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="Item|Effect")
+	UParticleSystem* ExplosionParticle;
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="Item|Effect")
+	USoundBase* ExplosionSound;
+
+	bool bHasExploded = false;
+
 	FTimerHandle TimerHandle;
 	
 	virtual void ActivateItem(AActor* OverlapActor) override;

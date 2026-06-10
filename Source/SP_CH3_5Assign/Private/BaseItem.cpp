@@ -4,6 +4,8 @@
 #include "BaseItem.h"
 
 #include "Components/SphereComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
 
 
 // Sets default values
@@ -50,6 +52,40 @@ void ABaseItem::OnItemEndOverlap(
 
 void ABaseItem::ActivateItem(AActor* OverlapActor)
 {
+	UParticleSystemComponent* Particle = nullptr;
+	if(PickParticle)
+	{
+		Particle = UGameplayStatics::SpawnEmitterAtLocation(
+			GetWorld(),
+			PickParticle,
+			GetActorLocation(),
+			GetActorRotation(),
+			true
+			);
+	}
+	if(PickSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			PickSound,
+			GetActorLocation()
+			);
+	}
+
+	
+	if(Particle)
+	{
+		FTimerHandle DestroyParticleHandle;
+		GetWorld()->GetTimerManager().SetTimer(
+			DestroyParticleHandle,
+			[Particle]()
+			{
+				Particle->DestroyComponent();	
+			},
+			5.0f,
+			false
+			);
+	}
 }
 
 FName ABaseItem::GetItemType() const
@@ -59,7 +95,7 @@ FName ABaseItem::GetItemType() const
 
 void ABaseItem::DestroyItem()
 {
-	Destroyed();
+	Destroy();
 }
 
 

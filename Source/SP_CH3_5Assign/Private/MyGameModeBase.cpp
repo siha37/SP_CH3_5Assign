@@ -5,9 +5,11 @@
 
 #include "MyPlayer.h"
 #include "MyPlayerController.h"
+#include "PlayerGameState.h"
 
 AMyGameModeBase::AMyGameModeBase()
 {
 	DefaultPawnClass = AMyPlayer::StaticClass();
 	PlayerControllerClass = AMyPlayerController::StaticClass();
+	GameStateClass = APlayerGameState::StaticClass();
 }

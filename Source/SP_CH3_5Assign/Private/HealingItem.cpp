@@ -3,6 +3,8 @@
 
 #include "HealingItem.h"
 
+#include "MyPlayer.h"
+
 AHealingItem::AHealingItem()
 {
 	HealAmount = 20;
@@ -11,9 +13,13 @@ AHealingItem::AHealingItem()
 
 void AHealingItem::ActivateItem(AActor* OverlapActor)
 {
+	Super::ActivateItem(OverlapActor);
 	if(OverlapActor && OverlapActor->ActorHasTag("Player"))
 	{
-		GEngine->AddOnScreenDebugMessage(-1,2.f,FColor::Red,"Player Hit!");
+		if(AMyPlayer* player = Cast<AMyPlayer>(OverlapActor))
+		{
+			player->AddHealth(HealAmount);
+		}
 		DestroyItem();
 	}
 }

@@ -6,7 +6,10 @@
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "MyPlayerController.h"
+#include "PlayerGameState.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/TextBlock.h"
+#include "Components/WidgetComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 
 // Sets default values
@@ -30,10 +33,16 @@ AMyPlayer::AMyPlayer()
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(Spring,USpringArmComponent::SocketName);
 	Camera->bUsePawnControlRotation = false;
+
+	OverHeadWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("OverHeadWidget"));
+	OverHeadWidget->SetupAttachment(Mesh);
+	OverHeadWidget->SetWidgetSpace(EWidgetSpace::Screen);	
 	
+	MaxHealth =  100;
+	Health = MaxHealth;
+
 	
 	PrimaryActorTick.bCanEverTick = true;
-
 }
 
 
@@ -42,7 +51,7 @@ AMyPlayer::AMyPlayer()
 void AMyPlayer::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	UpdateOverHeadHp();
 }
 
 
@@ -86,6 +95,7 @@ void AMyPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	}
 }
 
+
 void AMyPlayer::Move(const FInputActionValue& value)
 {
 	float CurrentSpeed = MoveSpeed;
@@ -98,7 +108,6 @@ void AMyPlayer::Move(const FInputActionValue& value)
 	
 	
 	FVector2D MoveInput = value.Get<FVector2D>().GetSafeNormal();
-	UE_LOG(LogTemp, Display, TEXT("Move %f /%f "), MoveInput.X,MoveInput.Y);
 	FRotator CamRot = Spring->GetRelativeRotation();
 	FRotator YawRot(0,CamRot.Yaw,0);
 
@@ -188,6 +197,54 @@ void AMyPlayer::Tick(float DeltaTime)
 	}
 	
 	AddActorLocalOffset(DeltaLocation,true);
+}
+
+float AMyPlayer::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator,
+	AActor* DamageCauser)
+{
+	float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	
+	Health = FMath::Clamp(Health-ActualDamage,0,MaxHealth);
+	UE_LOG(LogTemp,Log,TEXT("AMyPlayer Take Damage %f"),ActualDamage);
+	UpdateOverHeadHp();
+	if(Health <= 0)
+	{
+		OnDeath();
+	}
+	return ActualDamage;
+}
+
+void AMyPlayer::OnDeath()
+{
+	APlayerGameState* state = GetWorld()->GetGameState<APlayerGameState>();
+	if(state)
+	{
+		state->OnGameOver();
+	}
+}
+
+void AMyPlayer::UpdateOverHeadHp()
+{
+	if(!OverHeadWidget) return;
+
+	UUserWidget* widget = OverHeadWidget->GetUserWidgetObject();
+	if(!widget) return;
+
+	if(UTextBlock* HPText = Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("OverHeadHP"))))
+	{
+		HPText->SetText(FText::FromString(FString::Printf(TEXT("%.0f / %.0f"),Health,MaxHealth)));
+	}
+}
+
+float AMyPlayer::GetHealth() const
+{
+	return Health;
+}
+
+void AMyPlayer::AddHealth(float Amount)
+{
+	Health -= FMath::Clamp(Health+Amount,0,MaxHealth);
+	UpdateOverHeadHp();
 }
 
 

@@ -6,6 +6,7 @@
 #include "GameFramework/Pawn.h"
 #include "MyPlayer.generated.h"
 
+class UWidgetComponent;
 struct FInputActionValue;
 class UCameraComponent;
 class USpringArmComponent;
@@ -21,9 +22,6 @@ public:
 	AMyPlayer();
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	UCapsuleComponent* Capsule;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
@@ -32,6 +30,8 @@ protected:
 	USpringArmComponent* Spring;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component)
 	UCameraComponent* Camera;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Component) 
+	UWidgetComponent* OverHeadWidget;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Move)
 	float MoveSpeed = 500;
@@ -49,17 +49,36 @@ protected:
 	FVector CurrentVelocity = FVector::ZeroVector;
 	bool bIsFalling = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
+	float MaxHealth;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
+	float Health;
 	
 
+
+	
+	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
-
 	
 	UFUNCTION()
 	void Move(const FInputActionValue& value);
 	void StartJump(const FInputActionValue& value);
 	void Look(const FInputActionValue& value);
+
+	
+	virtual float TakeDamage(
+		float DamageAmount,
+		struct FDamageEvent const& DamageEvent,
+		AController* EventInstigator,
+		AActor* DamageCauser);
+	void OnDeath();
+	void UpdateOverHeadHp();
 public:	
 	virtual void Tick(float DeltaTime) override;
+
+	UFUNCTION(BlueprintPure,Category="Health")
+	float GetHealth() const;
+	UFUNCTION(BlueprintCallable,Category="Health")
+	void AddHealth(float Amount);
 
 };
