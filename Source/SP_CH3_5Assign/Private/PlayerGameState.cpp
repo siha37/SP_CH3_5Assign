@@ -6,9 +6,11 @@
 #include "BaseItem.h"
 #include "CoinItem.h"
 #include "MyGameInstance.h"
+#include "MyPlayer.h"
 #include "MyPlayerController.h"
 #include "SpawnValume.h"
 #include "Blueprint/UserWidget.h"
+#include "Components/RadialSlider.h"
 #include "Components/TextBlock.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -121,7 +123,7 @@ void APlayerGameState::StartWave()
 	GetWorldTimerManager().SetTimer(
 		LevelTimerHandle,
 		this,
-		&APlayerGameState::OnLevelTimeUp,
+		&APlayerGameState::OnWaveTimeUp,
 		Duration,
 		false
 	);
@@ -176,7 +178,7 @@ void APlayerGameState::AddScore(int32 Amount)
 	}
 }
 
-void APlayerGameState::OnLevelTimeUp()
+void APlayerGameState::OnWaveTimeUp()
 {
 	EndWave(false);
 }
@@ -273,8 +275,36 @@ void APlayerGameState::UpdateHUD()
 				if (UTextBlock* TimeText = Cast<UTextBlock>(HUDWidget->GetWidgetFromName(TEXT("Time"))))
 				{
 					float RemainingTime = GetWorldTimerManager().GetTimerRemaining(LevelTimerHandle);
-					TimeText->SetText(FText::FromString(FString::Printf(TEXT("TIME: %.1f"), RemainingTime)));
+					FString TimeString = FString::Printf(TEXT("%.0f"), RemainingTime);
+					TimeString.TrimStartAndEndInline();
+					TimeText->SetText(FText::FromString(TimeString));
 				}
+
+				if (URadialSlider* TimerRing = Cast<URadialSlider>(HUDWidget->GetWidgetFromName(TEXT("TimerRing"))))
+				{
+					float RemainingTime = GetWorldTimerManager().GetTimerRemaining(LevelTimerHandle);
+					
+					FWaveRow* Wave = GetWaveData();
+					float Percent = GetWorldTimerManager().GetTimerRemaining(LevelTimerHandle) / Wave->WaveDuration;
+
+					TimerRing->SetValue(Percent);
+				}
+				
+				UFunction* PlayAnimFunc = HUDWidget->FindFunction(FName("WaveUpAnim"));
+				if(PlayAnimFunc)
+				{
+					struct FWaveUpAnimParams
+					{
+						int32 WaveCount;
+					};
+
+					// 2. 구조체 변수를 생성하고 값을 할당합니다.
+					FWaveUpAnimParams Params;
+					Params.WaveCount = CurrentWaveCount + 1;
+					
+					HUDWidget->ProcessEvent(PlayAnimFunc,&Params);
+				}
+				
 				if (UTextBlock* ScoreText = Cast<UTextBlock>(HUDWidget->GetWidgetFromName(TEXT("Score"))))
 				{
 					if (UGameInstance* GameInstance = GetGameInstance())
@@ -289,10 +319,39 @@ void APlayerGameState::UpdateHUD()
 				if (UTextBlock* LevelText = Cast<UTextBlock>(HUDWidget->GetWidgetFromName(TEXT("Level"))))
 				{
 					LevelText->SetText(FText::FromString(FString::Printf(
-						TEXT("LEVEL %d - WAVE %d"),
+						TEXT("LEVEL %d-WAVE %d"),
 						CurrentLevelIndex + 1,
 						CurrentWaveCount + 1
 					)));
+				}
+
+				if (const AMyPlayer* Player = Cast<AMyPlayer>(MyPlayerController->GetPawn()))
+				{
+					if (URadialSlider* SlowRing = Cast<URadialSlider>(
+						HUDWidget->GetWidgetFromName(TEXT("SlowRing"))))
+					{
+						if (Player->IsSlowActive())
+						{
+							const float Total = Player->GetSlowDurationTotal();
+							const float Percent = Total > 0.f
+								? Player->GetSlowRemainingTime() / Total
+								: 0.f;
+							SlowRing->SetValue(Percent);
+						}
+					}
+
+					if (URadialSlider* ReverseRing = Cast<URadialSlider>(
+						HUDWidget->GetWidgetFromName(TEXT("ReverseRing"))))
+					{
+						if (Player->IsReverseActive())
+						{
+							const float Total = Player->GetReverseDurationTotal();
+							const float Percent = Total > 0.f
+								? Player->GetReverseRemainingTime() / Total
+								: 0.f;
+							ReverseRing->SetValue(Percent);
+						}
+					}
 				}
 			}
 		}

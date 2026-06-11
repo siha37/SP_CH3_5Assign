@@ -3,11 +3,13 @@
 
 #include "MyPlayer.h"
 
+#include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "MyPlayerController.h"
 #include "PlayerGameState.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/WidgetComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -105,9 +107,21 @@ void AMyPlayer::Move(const FInputActionValue& value)
 	{
 		CurrentSpeed *= AirControlModifier;
 	}
-	
-	
+	if(SlowMovePercent != 0)
+	{
+		CurrentSpeed -= CurrentSpeed * SlowMovePercent / 100;
+	}
+
 	FVector2D MoveInput = value.Get<FVector2D>().GetSafeNormal();
+	const float InputMagnitude = MoveInput.Size();
+	GroundSpeed = CurrentSpeed * InputMagnitude;
+	bMoveInputThisFrame = true;
+	
+	if (bIsReverseControl)
+	{
+		MoveInput *= -1.f;
+	}
+	
 	FRotator CamRot = Spring->GetRelativeRotation();
 	FRotator YawRot(0,CamRot.Yaw,0);
 
@@ -149,6 +163,7 @@ void AMyPlayer::StartJump(const FInputActionValue& value)
 	{
 		CurrentVelocity.Z = JumpVelocity;
 		bIsFalling = true;
+		bIsJumping = true;
 	}
 }
 
@@ -166,6 +181,18 @@ void AMyPlayer::Look(const FInputActionValue& value)
 	Spring->SetRelativeRotation(currnt);
 }
 
+void AMyPlayer::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	CallHUDSlowUI(false);
+	CallHUDReverseUI(false);
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(SlowTimerHandle);
+		World->GetTimerManager().ClearTimer(ReverceControllHandle);
+	}
+	Super::EndPlay(EndPlayReason);
+}
 // Called every frame
 void AMyPlayer::Tick(float DeltaTime)
 {
@@ -187,15 +214,26 @@ void AMyPlayer::Tick(float DeltaTime)
 	
 	if(bHit && CurrentVelocity.Z < 0.0f)
 	{
-		bIsFalling =false;
+		bIsFalling = false;
+		bIsJumping = false;
 		CurrentVelocity.Z = 0.0f;
 		DeltaLocation = CurrentVelocity * DeltaTime;
+	}
+	else if(!bHit && CurrentVelocity.Z < 0.0f)
+	{
+		bIsJumping = false;
 	}
 	else
 	{
 		bIsFalling =true;
 	}
-	
+
+	if (!bMoveInputThisFrame)
+	{
+		GroundSpeed = FMath::FInterpTo(GroundSpeed, 0.f, DeltaTime, 15.f);
+	}
+	bMoveInputThisFrame = false;
+
 	AddActorLocalOffset(DeltaLocation,true);
 }
 
@@ -230,9 +268,9 @@ void AMyPlayer::UpdateOverHeadHp()
 	UUserWidget* widget = OverHeadWidget->GetUserWidgetObject();
 	if(!widget) return;
 
-	if(UTextBlock* HPText = Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("OverHeadHP"))))
+	if(UProgressBar* HpBar = Cast<UProgressBar>(widget->GetWidgetFromName(TEXT("HPBar"))))
 	{
-		HPText->SetText(FText::FromString(FString::Printf(TEXT("%.0f / %.0f"),Health,MaxHealth)));
+		HpBar->SetPercent(Health/MaxHealth);
 	}
 }
 
@@ -243,8 +281,165 @@ float AMyPlayer::GetHealth() const
 
 void AMyPlayer::AddHealth(float Amount)
 {
-	Health -= FMath::Clamp(Health+Amount,0,MaxHealth);
+	Health = FMath::Clamp(Health+Amount,0,MaxHealth);
 	UpdateOverHeadHp();
 }
 
 
+void AMyPlayer::SetSlow(float percent, float duration)
+{
+	SlowMovePercent = FMath::Clamp(percent, 0.f, 100.f);
+	SlowDurationTotal = duration;
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(SlowTimerHandle);
+		World->GetTimerManager().SetTimer(
+			SlowTimerHandle,
+			this,
+			&AMyPlayer::ResetSlow,
+			duration,
+			false
+		);
+	}
+
+	CallHUDSlowUI(true);
+}
+
+void AMyPlayer::ResetSlow()
+{
+	SlowMovePercent = 0.f;
+	SlowDurationTotal = 0.f;
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(SlowTimerHandle);
+	}
+
+	CallHUDSlowUI(false);
+}
+
+void AMyPlayer::SetReverseControll(bool isOn, float duration)
+{
+	bIsReverseControl = isOn;
+	ReverseDurationTotal = isOn ? duration : 0.f;
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(ReverceControllHandle);
+
+		if (isOn && duration > 0.f)
+		{
+			World->GetTimerManager().SetTimer(
+				ReverceControllHandle,
+				this,
+				&AMyPlayer::ResetReverseControl,
+				duration,
+				false
+			);
+		}
+	}
+
+	CallHUDReverseUI(isOn);
+}
+
+void AMyPlayer::ResetReverseControl()
+{
+	bIsReverseControl = false;
+	ReverseDurationTotal = 0.f;
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(ReverceControllHandle);
+	}
+
+	CallHUDReverseUI(false);
+}
+
+bool AMyPlayer::IsSlowActive() const
+{
+	return SlowMovePercent > 0.f && GetSlowRemainingTime() > 0.f;
+}
+
+bool AMyPlayer::IsReverseActive() const
+{
+	return bIsReverseControl && GetReverseRemainingTime() > 0.f;
+}
+
+float AMyPlayer::GetSlowRemainingTime() const
+{
+	if (const UWorld* World = GetWorld())
+	{
+		return World->GetTimerManager().GetTimerRemaining(SlowTimerHandle);
+	}
+	return 0.f;
+}
+
+float AMyPlayer::GetReverseRemainingTime() const
+{
+	if (const UWorld* World = GetWorld())
+	{
+		return World->GetTimerManager().GetTimerRemaining(ReverceControllHandle);
+	}
+	return 0.f;
+}
+
+void AMyPlayer::CallHUDSlowUI(bool bOn)
+{
+	AMyPlayerController* PlayerController = Cast<AMyPlayerController>(GetController());
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	UUserWidget* HUDWidget = PlayerController->GetHUDWidget();
+	if (!HUDWidget)
+	{
+		return;
+	}
+
+	UFunction* Func = HUDWidget->FindFunction(FName("SetSlowUIOnOff"));
+	if (!Func)
+	{
+		return;
+	}
+
+	struct FSlowUIParams
+	{
+		bool bOn;
+	};
+
+	FSlowUIParams Params;
+	Params.bOn = bOn;
+	HUDWidget->ProcessEvent(Func, &Params);
+}
+
+void AMyPlayer::CallHUDReverseUI(bool bOn)
+{
+	AMyPlayerController* PlayerController = Cast<AMyPlayerController>(GetController());
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	UUserWidget* HUDWidget = PlayerController->GetHUDWidget();
+	if (!HUDWidget)
+	{
+		return;
+	}
+
+	UFunction* Func = HUDWidget->FindFunction(FName("SetReverseUIOnOff"));
+	if (!Func)
+	{
+		return;
+	}
+
+	struct FReverseUIParams
+	{
+		bool bOn;
+	};
+
+	FReverseUIParams Params;
+	Params.bOn = bOn;
+	HUDWidget->ProcessEvent(Func, &Params);
+}

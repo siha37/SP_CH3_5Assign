@@ -59,7 +59,7 @@ public:
 	void AddScore(int32 Amount);
 
 	
-	void OnLevelTimeUp();
+	void OnWaveTimeUp();
 	void OnCoinCollected();
 	void EndLevel();
 	void OnGameOver();

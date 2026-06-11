@@ -45,6 +45,18 @@ protected:
 	float TraceDistance = 94.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Move)
 	float JumpVelocity = 500.0f;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Animation")
+	float GroundSpeed = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation")
+	bool bIsJumping = false;
+
+	bool bMoveInputThisFrame = false;
+	
+	float SlowMovePercent = 0;
+	float SlowDurationTotal = 0.f;
+	float ReverseDurationTotal = 0.f;
 
 	FVector CurrentVelocity = FVector::ZeroVector;
 	bool bIsFalling = false;
@@ -53,8 +65,11 @@ protected:
 	float MaxHealth;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health")
 	float Health;
-	
 
+	FTimerHandle SlowTimerHandle;
+	FTimerHandle ReverceControllHandle;
+	
+	bool bIsReverseControl = false;
 
 	
 	virtual void BeginPlay() override;
@@ -73,6 +88,13 @@ protected:
 		AActor* DamageCauser);
 	void OnDeath();
 	void UpdateOverHeadHp();
+	void ResetSlow();
+	void ResetReverseControl();
+	void CallHUDSlowUI(bool bOn);
+	void CallHUDReverseUI(bool bOn);
+	
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
 public:	
 	virtual void Tick(float DeltaTime) override;
 
@@ -80,5 +102,35 @@ public:
 	float GetHealth() const;
 	UFUNCTION(BlueprintCallable,Category="Health")
 	void AddHealth(float Amount);
+	
+	void SetSlow(float percent,float duration);
+	void SetReverseControll(bool isOn,float duration);
+	
+	UFUNCTION(BlueprintPure, Category = "Animation")
+	bool GetIsFalling() const { return bIsFalling; }
+
+	UFUNCTION(BlueprintPure, Category = "Animation")
+	bool GetIsJumping() const { return bIsJumping; }
+
+	UFUNCTION(BlueprintPure, Category = "Animation")
+	float GetGroundSpeed() const { return GroundSpeed; }
+
+	UFUNCTION(BlueprintPure, Category = "Debuff")
+	bool IsSlowActive() const;
+
+	UFUNCTION(BlueprintPure, Category = "Debuff")
+	bool IsReverseActive() const;
+
+	UFUNCTION(BlueprintPure, Category = "Debuff")
+	float GetSlowRemainingTime() const;
+
+	UFUNCTION(BlueprintPure, Category = "Debuff")
+	float GetReverseRemainingTime() const;
+
+	UFUNCTION(BlueprintPure, Category = "Debuff")
+	float GetSlowDurationTotal() const { return SlowDurationTotal; }
+
+	UFUNCTION(BlueprintPure, Category = "Debuff")
+	float GetReverseDurationTotal() const { return ReverseDurationTotal; }
 
 };
